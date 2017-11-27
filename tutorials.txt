@@ -1,0 +1,10 @@
+Installing opencv
+-----------------
+-> If you've installed opencv using $ sudo apt-get install python-opencv then it won't work (cv2.videoCapture(0) always returns False). 
+   Uninstall opencv using -
+	$ sudo apt-get remove python-opencv
+	$ sudo apt-get purge python-opencv
+
+-> Install opencv by following https://docs.opencv.org/trunk/d7/d9f/tutorial_linux_install.html
+
+-> Run with python3 (python2 + cv2 not working) $ python3 sample.py
