@@ -8,3 +8,7 @@ Installing opencv
 -> Install opencv by following https://docs.opencv.org/trunk/d7/d9f/tutorial_linux_install.html
 
 -> Run with python3 (python2 + cv2 not working) $ python3 sample.py
+
+Diving into opencv
+------------------
+-> https://docs.opencv.org/3.0-beta/doc/py_tutorials/py_gui/py_video_display/py_video_display.html

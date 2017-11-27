@@ -1,4 +1,4 @@
-# Tutorial -> https://www.youtube.com/watch?v=Jvf5y21ZqtQ
+# Tutorial -> https://docs.opencv.org/3.0-beta/doc/py_tutorials/py_gui/py_video_display/py_video_display.html#capture-video-from-camera
 
 import cv2
 
