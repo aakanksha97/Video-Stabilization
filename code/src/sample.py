@@ -3,6 +3,19 @@
 import cv2
 import numpy
 
+def remove_missed_points(status, prev_points, cur_points):
+	prev_points_filt = []
+	cur_points_filt = []
+
+	for cur_stat, cur_prev_points, cur_cur_points in zip(status, prev_points, cur_points):
+		if(cur_stat[0] == 1):
+			prev_points_filt.append(cur_prev_points)
+			cur_points_filt.append(cur_cur_points)
+
+	prev_points_filt = numpy.array(prev_points_filt)
+	cur_points_filt = numpy.array(cur_points_filt)
+	return prev_points_filt, cur_points_filt
+
 capture = cv2.VideoCapture("shaky.mp4")
 
 
@@ -29,19 +42,17 @@ while( capture.isOpened() == True ):
 		cur_frame_gray = cv2.cvtColor(cur_frame, cv2.COLOR_BGR2GRAY)
 
 		# Tracks the corner points
-		print("prev points : \n" + str(prev_points) + "\n-----------------------------\n")
 		prev_points.astype(numpy.float32)
 		cur_points, status, error = cv2.calcOpticalFlowPyrLK(prev_frame_gray, cur_frame_gray, prev_points, None, **lk_params)
+		
+		prev_points, cur_points = remove_missed_points(status, prev_points, cur_points)
 
-		# Considering those points which are found in the cur_frame i.e status = 1
-		#prev_filt_points = prev_points[status==1]
-		#cur_filt_points = cur_points[status==1]
-
-		# 3x3 Transformation matrix
-		#trans_mat = cv2.findHomography(prev_filt_points,cur_filt_points)
+		# trans_mat is a 2-tuple - first val being, 3x3 transformation matrix, second val - status_array
 		trans_mat = cv2.findHomography(prev_points,cur_points)
-
-		print( "status : \n" + str(status) + "\n---------------------------" )
+		trans_mat = trans_mat[0]
+		if(str(trans_mat[0][0]) == "nan" or str(trans_mat[0][0]) == "inf" or str(trans_mat[0][0]) == "-inf"):
+			print("bad mat")
+		print("trans mat " + str(trans_mat))
 
 		if(cv2.waitKey(1) == ord('q')):
 			break
