@@ -33,6 +33,10 @@ lk_params = dict( winSize  = (15,15),
 ret_val_prev, prev_frame = capture.read()
 prev_frame_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
 
+codec = cv2.VideoWriter_fourcc(*'XVID')
+print("gray img shape ; " + str(prev_frame_gray.shape))
+out_vid = cv2.VideoWriter('stabilized.avi',codec, 20.0, (prev_frame_gray.shape[1], prev_frame_gray.shape[0]))
+
 # To detect corner points
 prev_points = cv2.goodFeaturesToTrack(prev_frame_gray, mask = None, **feature_params)
 
@@ -40,7 +44,7 @@ while( capture.isOpened() == True ):
 	ret_val_cur, cur_frame = capture.read()
 	if( ret_val_cur == True ):
 		cur_frame_gray = cv2.cvtColor(cur_frame, cv2.COLOR_BGR2GRAY)
-
+		
 		# Tracks the corner points
 		prev_points.astype(numpy.float32)
 		cur_points, status, error = cv2.calcOpticalFlowPyrLK(prev_frame_gray, cur_frame_gray, prev_points, None, **lk_params)
@@ -52,10 +56,16 @@ while( capture.isOpened() == True ):
 		trans_mat = trans_mat[0]
 		if(str(trans_mat[0][0]) == "nan" or str(trans_mat[0][0]) == "inf" or str(trans_mat[0][0]) == "-inf"):
 			print("bad mat")
-		print("trans mat " + str(trans_mat))
+		else:
+			#print("trans mat " + str(trans_mat))
+			transformed_frame = numpy.empty(cur_frame_gray.shape)
 
-		if(cv2.waitKey(1) == ord('q')):
-			break
+			transformed_frame = cv2.warpPerspective(src=cur_frame, dst=transformed_frame, M=trans_mat, dsize=(transformed_frame.shape[1], transformed_frame.shape[0]), flags = cv2.WARP_INVERSE_MAP)
+			
+			cv2.imshow("stabilized footage", transformed_frame)	
+			out_vid.write(transformed_frame)
+			if(cv2.waitKey(1) == ord('q')):
+				break
 	
 		# Update for next iteration
 		prev_frame = cur_frame.copy()
@@ -71,4 +81,4 @@ while( capture.isOpened() == True ):
 
 cv2.destroyAllWindows()
 capture.release()
-
+out_vid.release()
