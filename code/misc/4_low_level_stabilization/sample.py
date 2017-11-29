@@ -1,4 +1,4 @@
-import cv2
+mport cv2
 import numpy
 
 def store_translated_image():
@@ -23,13 +23,14 @@ def remove_missed_points(status, prev_points, cur_points):
         cur_points_filt = numpy.array(cur_points_filt)
         return prev_points_filt, cur_points_filt
 
+
+
+
 '''
                         *       *       *
                         *       #       *
                         *       *       *
 '''
-
-
 def visualize_points(image, points):
 	min_intensity = 0
 	max_intensity = 255
@@ -80,6 +81,12 @@ def visualize_points(image, points):
 
 		cv2.imwrite("cameraman_points.jpg", image)
 
+
+def detect_edges(img_org):
+	img_edg = cv2.Canny(img_org, 100, 200)
+	print("img_edg : " + str(img_edg))
+	cv2.imwrite("cameraman_edges.jpg", img_edg)
+
 # params for ShiTomasi corner detection
 feature_params = dict( maxCorners = 100,
                        qualityLevel = 0.3,
@@ -97,6 +104,9 @@ cur_frame = cv2.imread("cameraman_translated.jpg", 0)
 prev_frame.astype(numpy.float32)
 cur_frame.astype(numpy.float32)
 
+detect_edges(prev_frame)
+exit(0)
+
 # To detect corner points
 prev_points = cv2.goodFeaturesToTrack(prev_frame, mask = None, **feature_params)
 prev_points.astype(numpy.float32)
@@ -107,9 +117,6 @@ cur_points, status, error = cv2.calcOpticalFlowPyrLK(prev_frame, cur_frame, prev
 prev_points_updated, cur_points = remove_missed_points(status, prev_points, cur_points)
 cur_points.astype(numpy.float32)
 prev_points_updated.astype(numpy.float32)
-
-visualize_points(prev_frame, prev_points_updated)
-exit(0)
 
 trans_mat = cv2.findHomography(cur_points, prev_points_updated, method=cv2.LMEDS)
 trans_mat = trans_mat[0]
