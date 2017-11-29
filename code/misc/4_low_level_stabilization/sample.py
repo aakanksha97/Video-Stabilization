@@ -23,6 +23,63 @@ def remove_missed_points(status, prev_points, cur_points):
         cur_points_filt = numpy.array(cur_points_filt)
         return prev_points_filt, cur_points_filt
 
+'''
+                        *       *       *
+                        *       #       *
+                        *       *       *
+'''
+
+
+def visualize_points(image, points):
+	min_intensity = 0
+	max_intensity = 255
+	threshold = 127
+	for item in points:
+		(row, col) = (int(item[0][0]), int(item[0][1]))
+		
+		if(image[row-1][col-1] > threshold):
+			image[row-1][col-1] = min_intensity
+		else:
+			image[row-1][col-1] = max_intensity
+
+		if(image[row-1][col] > threshold):
+                        image[row-1][col] = min_intensity
+                else:
+                        image[row-1][col] = max_intensity
+		
+		if(image[row-1][col+1] > threshold):
+                        image[row-1][col+1] = min_intensity
+                else:
+                        image[row-1][col+1] = max_intensity
+		
+		if(image[row][col+1] > threshold):
+                        image[row][col+1] = min_intensity
+                else:
+                        image[row][col+1] = max_intensity
+		
+		if(image[row+1][col+1] > threshold):
+                        image[row+1][col+1] = min_intensity
+                else:
+                        image[row+1][col+1] = max_intensity	
+
+		if(image[row+1][col] > threshold):
+                        image[row+1][col] = min_intensity
+                else:
+                        image[row+1][col] = max_intensity
+		
+		if(image[row+1][col-1] > threshold):
+                        image[row+1][col-1] = min_intensity
+                else:
+                        image[row+1][col-1] = max_intensity
+		
+
+		if(image[row][col-1] > threshold):
+                        image[row][col-1] = min_intensity
+                else:
+                        image[row][col-1] = max_intensity		
+
+		cv2.imwrite("cameraman_points.jpg", image)
+
 # params for ShiTomasi corner detection
 feature_params = dict( maxCorners = 100,
                        qualityLevel = 0.3,
@@ -51,9 +108,11 @@ prev_points_updated, cur_points = remove_missed_points(status, prev_points, cur_
 cur_points.astype(numpy.float32)
 prev_points_updated.astype(numpy.float32)
 
-trans_mat = cv2.findHomography(cur_points, prev_points_updated)
+visualize_points(prev_frame, prev_points_updated)
+exit(0)
+
+trans_mat = cv2.findHomography(cur_points, prev_points_updated, method=cv2.LMEDS)
 trans_mat = trans_mat[0]
-print("trans_mat : " + str(trans_mat))
 
 transformed_frame = numpy.empty(cur_frame.shape)
 transformed_frame = cv2.warpPerspective(src=cur_frame, dst=transformed_frame, M=trans_mat, dsize=(cur_frame.shape[1], cur_frame.shape[0]))
