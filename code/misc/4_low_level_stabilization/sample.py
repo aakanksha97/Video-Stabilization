@@ -13,6 +13,13 @@ def store_translated_image(filename):
 	translated_img = cv2.warpAffine(org_img,affine_matrix,(cols,rows))
 	cv2.imwrite("translated.jpg", translated_img)
 
+def reverse_translate():
+	org_img = cv2.imread("translated.jpg", 0)
+	rows, cols = org_img.shape
+	affine_matrix = numpy.float32([[1, 0, -100], [0, 1, -50]])
+	rev_translated_image = cv2.warpAffine(org_img,affine_matrix,(cols,rows))
+	cv2.imwrite("rev_translated.jpg", rev_translated_image)
+
 def remove_missed_points(status, prev_points, cur_points):
         prev_points_filt = []
         cur_points_filt = []
@@ -85,13 +92,13 @@ def visualize_points(image, points, filename):
 	cv2.imwrite(filename, image)
 
 
-def detect_edges(img_org):
+def detect_edges(img_org, filename):
 	img_edg = cv2.Canny(img_org, 100, 200)
-	cv2.imwrite("edges.jpg", img_edg)
+	cv2.imwrite(filename, img_edg)
 	return img_edg
 
 def get_edge_points(img_org, filename):
-	img_edg = detect_edges(img_org)
+	img_edg = detect_edges(img_org, "b_w_" + filename)
 	edge_points = []
 	row_index = 0
 	for row_array in img_edg:
@@ -101,33 +108,61 @@ def get_edge_points(img_org, filename):
 				edge_points.append([[row_index, col_index]])
 			col_index = col_index + 1
 		row_index = row_index + 1
-	visualize_points(img_org, edge_points, filename)
+	visualize_points(img_org.copy(), edge_points, filename)
 	return numpy.array(edge_points)	
 
 def main():
 	store_translated_image("cameraman.jpg")
-
+	reverse_translate()
+	exit(0)	
+	
+	# params for ShiTomasi corner detection
+	feature_params = dict( 	maxCorners = 100,
+				qualityLevel = 0.3,
+				minDistance = 7,
+				blockSize = 7 )
+	
 	# Parameters for lucas kanade optical flow
-	lk_params = dict( winSize  = (15,15),
-        	          maxLevel = 2,
-                	  criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
-
+	lk_params = dict( 	winSize  = (15,15),
+				maxLevel = 2,
+				criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
 
 	prev_frame = cv2.imread("cameraman.jpg", 0)
 	cur_frame = cv2.imread("translated.jpg", 0)
 	
-	prev_points = get_edge_points(prev_frame, "points_prev_frame.jpg")
+	prev_points = get_edge_points(prev_frame.copy(), "points_prev_frame.jpg")
+	cur_points = get_edge_points(cur_frame.copy(), "points_cur_frame.jpg")
 	prev_points = prev_points.astype(numpy.float32)
+	cur_points = cur_points.astype(numpy.float32)	
 	
-	# Tracks the edge points
-	cur_points, status, error = cv2.calcOpticalFlowPyrLK(prev_frame, cur_frame, prev_points, None, **lk_params)	
+	print("prev_points : " + str(prev_points.shape))
+	print("cur_points : " + str(cur_points.shape))
 
-	prev_points_updated, cur_points = remove_missed_points(status, prev_points, cur_points)
-	cur_points = cur_points.astype(numpy.float32)
-	prev_points_updated = prev_points_updated.astype(numpy.float32)	
-	visualize_points(cur_frame, cur_points, "points_cur_frame.jpg")
+	tot_prev_points = prev_points.shape[0]
+	tot_cur_points = cur_points.shape[0]
+	min_points = min(tot_prev_points, tot_cur_points)
 
-	trans_mat = cv2.findHomography(cur_points, prev_points_updated)
+	if(tot_prev_points != min_points):
+		diff = tot_prev_points - min_points
+		start_index = int(diff / 2)
+		prev_points = prev_points[start_index:(start_index+min_points)]
+	elif(total_cur_points != min_points):
+		diff = tot_cur_points - min_points
+		start_index = int(diff/2)
+		cur_points = cur_points[start_index:(start_index+min_points)]
+
+	print("rev_prev_points : " + str(prev_points.shape))
+        print("rev_cur_points : " + str(cur_points.shape))
+
+	p0 = cv2.goodFeaturesToTrack(prev_frame, mask = None, **feature_params)
+	p1, status, err = cv2.calcOpticalFlowPyrLK(prev_frame, cur_frame, p0, None, **lk_params)
+	
+	visualize_points(prev_frame.copy(), p0, "optical_flow_prev_frame.jpg")
+	visualize_points(cur_frame.copy(), p1, "optical_flow_cur_frame.jpg")
+
+	p0, p1 = remove_missed_points(status, p0, p1)
+
+	trans_mat = cv2.findHomography(p1, p0)
 	trans_mat = trans_mat[0]
 
 	transformed_frame = numpy.empty(cur_frame.shape)
