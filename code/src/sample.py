@@ -34,11 +34,11 @@ ret_val_prev, prev_frame = capture.read()
 prev_frame_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
 
 codec = cv2.VideoWriter_fourcc(*'XVID')
-print("gray img shape ; " + str(prev_frame_gray.shape))
 out_vid = cv2.VideoWriter('stabilized.avi',codec, 20.0, (prev_frame_gray.shape[1], prev_frame_gray.shape[0]))
 
 # To detect corner points
 prev_points = cv2.goodFeaturesToTrack(prev_frame_gray, mask = None, **feature_params)
+prev_points.astype(numpy.float32)
 
 while( capture.isOpened() == True ):
 	ret_val_cur, cur_frame = capture.read()
@@ -46,13 +46,29 @@ while( capture.isOpened() == True ):
 		cur_frame_gray = cv2.cvtColor(cur_frame, cv2.COLOR_BGR2GRAY)
 		
 		# Tracks the corner points
-		prev_points.astype(numpy.float32)
 		cur_points, status, error = cv2.calcOpticalFlowPyrLK(prev_frame_gray, cur_frame_gray, prev_points, None, **lk_params)
 		
-		prev_points, cur_points = remove_missed_points(status, prev_points, cur_points)
+		prev_count = prev_points.shape[0]
+		print("# points before : " + str(prev_points.shape))
+		prev_points_updated, cur_points = remove_missed_points(status, prev_points, cur_points)
+		print("# points after : " + str(prev_points_updated.shape))
+		cur_count = prev_points_updated.shape[0]
+		points_dropped = prev_count - cur_count
+		percent_dropped = (points_dropped/prev_count)*100
+		print("prev_count : " + str(prev_count) + "\ncur_count : " + str(cur_count) + "\npercent_dropped : " + str(percent_dropped) + "\n")
+		if(percent_dropped > 8):	
+			prev_frame = cur_frame.copy()
+			prev_frame_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
 
+			# To detect corner points
+			prev_points = cv2.goodFeaturesToTrack(prev_frame_gray, mask = None, **feature_params)
+			if(prev_points == None):
+				break
+			else:
+				prev_points.astype(numpy.float32)
+			continue			
 		# trans_mat is a 2-tuple - first val being, 3x3 transformation matrix, second val - status_array
-		trans_mat = cv2.findHomography(prev_points,cur_points)
+		trans_mat = cv2.findHomography(cur_points, prev_points_updated)
 		trans_mat = trans_mat[0]
 		if(str(trans_mat[0][0]) == "nan" or str(trans_mat[0][0]) == "inf" or str(trans_mat[0][0]) == "-inf"):
 			print("bad mat")
@@ -60,25 +76,14 @@ while( capture.isOpened() == True ):
 			#print("trans mat " + str(trans_mat))
 			transformed_frame = numpy.empty(cur_frame_gray.shape)
 
-			transformed_frame = cv2.warpPerspective(src=cur_frame, dst=transformed_frame, M=trans_mat, dsize=(transformed_frame.shape[1], transformed_frame.shape[0]), flags = cv2.WARP_INVERSE_MAP)
-			
-			cv2.imshow("stabilized footage", transformed_frame)	
-			out_vid.write(transformed_frame)
-			if(cv2.waitKey(1) == ord('q')):
-				break
-	
-		# Update for next iteration
-		prev_frame = cur_frame.copy()
-		prev_frame_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
+			transformed_frame = cv2.warpPerspective(src=cur_frame, dst=transformed_frame, M=trans_mat, dsize=(transformed_frame.shape[1], transformed_frame.shape[0]))
 
-		# To detect corner points
-		prev_points = cv2.goodFeaturesToTrack(prev_frame_gray, mask = None, **feature_params)
-
-		if(prev_points == None):
+		cv2.imshow("stabilized footage", transformed_frame)	
+		out_vid.write(transformed_frame)
+		if(cv2.waitKey(1) == ord('q')):
 			break
 	else:
 		break
-
 cv2.destroyAllWindows()
 capture.release()
 out_vid.release()
